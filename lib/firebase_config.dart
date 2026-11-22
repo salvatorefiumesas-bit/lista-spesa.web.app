@@ -15,12 +15,12 @@ import 'package:flutter/foundation.dart';
 ///
 /// Finché [apiKey] è vuota l'app funziona lo stesso, ma la lista resta
 /// solo sul telefono.
-const apiKey = '';
-const authDomain = '';
-const projectId = '';
-const storageBucket = '';
-const messagingSenderId = '';
-const webAppId = '';
+const apiKey = 'AIzaSyBw6XG5IUPQEHFUhmjJdfja-FvX8SYvWt4';
+const authDomain = 'listaspesaapp-4a0aa.firebaseapp.com';
+const projectId = 'listaspesaapp-4a0aa';
+const storageBucket = 'listaspesaapp-4a0aa.firebasestorage.app';
+const messagingSenderId = '837211278940';
+const webAppId = '1:837211278940:web:ac147a6e0109ac4bb3a099';
 const androidAppId = '';
 
 bool get firebaseConfigurato =>
