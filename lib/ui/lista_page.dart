@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../condividi.dart';
 import '../models.dart';
 import '../stato.dart';
 import 'catalogo_page.dart';
@@ -33,6 +34,11 @@ class ListaPage extends StatelessWidget {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Condividi l\'app (anche per iPhone)',
+            icon: const Icon(Icons.share),
+            onPressed: () => condividiApp(context, codiceFamiglia: stato.codiceFamiglia),
+          ),
           IconButton(
             tooltip: stato.inFamiglia ? 'Famiglia (condivisa)' : 'Condividi la lista',
             icon: Icon(stato.inFamiglia ? Icons.people : Icons.person_add_alt_1),

@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart' as web;
 
@@ -29,3 +30,6 @@ String indirizzoApp() {
   final l = web.window.location;
   return '${l.origin}${l.pathname}';
 }
+
+/// true se il browser ha il menu "Condividi" del telefono (navigator.share).
+bool condivisioneNativa() => (web.window.navigator as JSObject).has('share');

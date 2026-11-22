@@ -1,7 +1,6 @@
-import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../installa/installa.dart';
+import '../condividi.dart';
 import 'comuni.dart';
 
 class FamigliaPage extends StatefulWidget {
@@ -22,14 +21,6 @@ class _FamigliaPageState extends State<FamigliaPage> {
     if (!mounted) return;
     setState(() => _occupato = false);
     if (errore != null) avviso(context, errore);
-  }
-
-  String _invito(String codice) {
-    final url = indirizzoApp();
-    return 'Ecco la nostra lista della spesa condivisa!\n'
-        '${url.isNotEmpty ? '1. Apri $url\n' : '1. Apri l\'app Lista Spesa\n'}'
-        '2. Tocca l\'icona delle persone in alto → "Entra con un codice"\n'
-        '3. Scrivi il codice: $codice';
   }
 
   @override
@@ -102,14 +93,9 @@ class _FamigliaPageState extends State<FamigliaPage> {
             ),
             const SizedBox(height: 12),
             FilledButton.icon(
-              icon: const Icon(Icons.copy),
-              label: const Text('Copia l\'invito da mandare'),
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: _invito(stato.codiceFamiglia!)));
-                if (context.mounted) {
-                  avviso(context, 'Invito copiato: incollalo su WhatsApp o in un messaggio');
-                }
-              },
+              icon: const Icon(Icons.share),
+              label: const Text('Invia l\'invito (WhatsApp, SMS…)'),
+              onPressed: () => condividiApp(context, codiceFamiglia: stato.codiceFamiglia),
             ),
             const SizedBox(height: 24),
             Text('Nella lista', style: tt.labelLarge),
@@ -177,6 +163,16 @@ class _FamigliaPageState extends State<FamigliaPage> {
               onPressed: _occupato ? null : () => _esegui(() => stato.entraInFamiglia(_codice.text)),
             ),
           ],
+          const SizedBox(height: 32),
+          const Divider(),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.phone_iphone),
+            title: const Text('Condividi l\'app per iPhone'),
+            subtitle: const Text('Manda il link e le istruzioni per installarla da Safari'),
+            trailing: const Icon(Icons.share),
+            onTap: () => condividiApp(context, codiceFamiglia: stato.codiceFamiglia),
+          ),
           if (_occupato) ...[
             const SizedBox(height: 16),
             const Center(child: CircularProgressIndicator()),
