@@ -41,8 +41,8 @@ Sul primo telefono: icona delle persone in alto → **Crea la famiglia** → **C
 Sul secondo telefono: apri il link, icona delle persone → scrivi il **codice** → **Entra**.
 
 ## App Android (APK)
-Scheda **Actions** → ultima esecuzione di *Pubblica* → in fondo, *Artifacts* → **lista-spesa-android**.
-Scarica lo zip sul telefono, aprilo e installa `app-release.apk` (Android chiederà di consentire l'installazione da questa fonte).
+Nella pagina del repository, a destra (o in fondo dal telefono): **Rilasci → App Android → lista-spesa.apk**.
+Scaricalo dal telefono e aprilo (Android chiederà di consentire l'installazione da questa fonte).
 
 ## Sviluppo
 
