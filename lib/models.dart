@@ -94,6 +94,7 @@ class Voce {
     this.presa = false,
     this.aggiuntaDa,
     this.presaDa,
+    this.presaIl,
     required this.creata,
   });
 
@@ -108,6 +109,9 @@ class Voce {
   final bool presa;
   final String? aggiuntaDa;
   final String? presaDa;
+
+  /// Quando è stata messa nel carrello (millisecondi), per la pulizia automatica.
+  final int? presaIl;
   final int creata;
 
   /// Chiave per riconoscere lo stesso prodotto della stessa marca.
@@ -131,6 +135,7 @@ class Voce {
     presa: presa ?? this.presa,
     aggiuntaDa: aggiuntaDa,
     presaDa: azzeraPresaDa ? null : (presaDa ?? this.presaDa),
+    presaIl: presaIl,
     creata: creata,
   );
 
@@ -146,6 +151,7 @@ class Voce {
     'presa': presa,
     'aggiuntaDa': aggiuntaDa,
     'presaDa': presaDa,
+    'presaIl': presaIl,
     'creata': creata,
   };
 
@@ -161,6 +167,7 @@ class Voce {
     presa: m['presa'] as bool? ?? false,
     aggiuntaDa: m['aggiuntaDa'] as String?,
     presaDa: m['presaDa'] as String?,
+    presaIl: (m['presaIl'] as num?)?.toInt(),
     creata: (m['creata'] as num?)?.toInt() ?? 0,
   );
 }

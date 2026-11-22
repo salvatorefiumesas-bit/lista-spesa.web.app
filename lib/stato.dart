@@ -17,9 +17,7 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
   late SharedPreferences _prefs;
   late ArchivioLocale _locale;
   Archivio? _archivio;
-  StreamSubscription<List<Voce>>? _subVoci;
-  StreamSubscription<List<Prodotto>>? _subProd;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _subFam;
+  StreamSubscription<Contenuto>? _sub;
 
   bool pronto = false;
   bool condivisioneDisponibile = false;
@@ -38,23 +36,27 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
 
   StatoSync statoSync = StatoSync.ok;
 
-  /// Riapre il collegamento con il server: invia subito le modifiche in
-  /// attesa e scarica quelle dell'altro telefono. Si usa quando l'app torna
-  /// in primo piano (il telefono spesso chiude la connessione in background)
-  /// e quando si tira giù la lista.
+  /// Riapre il collegamento con il server (tirando giù la lista): invia le
+  /// modifiche in attesa e scarica quelle dell'altro telefono.
   Future<void> riconnetti() async {
     if (!inFamiglia) return;
-    try {
-      final fs = FirebaseFirestore.instance;
-      await fs.disableNetwork();
-      await fs.enableNetwork();
-    } catch (_) {}
+    _archivio!.pausa();
+    _archivio!.riprendi();
+    await Future<void>.delayed(const Duration(milliseconds: 600));
   }
 
-  /// Quando l'app torna in primo piano riallaccia subito la connessione.
+  /// In background l'app non ascolta (niente letture inutili); quando torna
+  /// aperta riprende e si aggiorna con una sola lettura.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) riconnetti();
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _archivio?.riprendi();
+      case AppLifecycleState.paused || AppLifecycleState.hidden:
+        _archivio?.pausa();
+      default:
+        break;
+    }
   }
 
   Future<void> avvia() async {
@@ -94,33 +96,24 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _collega(Archivio a) {
-    _subVoci?.cancel();
-    _subProd?.cancel();
-    _subFam?.cancel();
+    _sub?.cancel();
     if (_archivio != _locale) _archivio?.chiudi();
     _archivio = a;
-    _subVoci = a.voci().listen((v) {
-      voci = v;
-      notifyListeners();
-    });
-    _subProd = a.prodotti().listen((p) {
-      _personali = p;
-      notifyListeners();
-    });
     if (a is ArchivioFamiglia) {
-      a.sync.addListener(() {
-        statoSync = a.sync.value;
-        notifyListeners();
-      });
-      _subFam = _docFamiglia(a.codice).snapshots().listen((s) {
-        final d = s.data();
-        if (d == null) return;
-        membri = Map<String, String>.from(d['nomi'] as Map? ?? const {});
-        notifyListeners();
-      }, onError: (_) {});
-    } else {
-      membri = {};
+      // Tolti dalla famiglia o famiglia inesistente: si torna alla lista
+      // solo sul telefono.
+      a.onAccessoNegato = () {
+        if (_archivio == a) esciDallaFamiglia(avvisaServer: false);
+      };
     }
+    _sub = a.contenuto().listen((c) {
+      voci = c.voci;
+      _personali = c.prodotti;
+      membri = c.nomi;
+      statoSync = c.sync;
+      notifyListeners();
+    });
+    a.riprendi();
   }
 
   // ---------------------------------------------------------------- catalogo
@@ -176,7 +169,7 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     final esistente = _personali.where((x) => x.id == p.id).firstOrNull;
-    await _archivio!.salvaProdotto(
+    _archivio!.salvaProdotto(
       Prodotto(
         id: p.id,
         nome: p.nome,
@@ -201,7 +194,7 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
       emoji: reparto.emoji,
       personale: true,
     );
-    await _archivio!.salvaProdotto(p);
+    _archivio!.salvaProdotto(p);
     return p;
   }
 
@@ -249,32 +242,34 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
         .where((v) => !v.presa && v.chiave == nuova.chiave)
         .firstOrNull;
     if (uguale != null) {
-      await _archivio!.aggiornaVoce(uguale, {
-        'quantita': inFamiglia
-            ? FieldValue.increment(quantita)
-            : uguale.quantita + quantita,
-      });
+      _archivio!.aggiornaVoce(uguale.id, const {}, incremento: quantita);
     } else {
-      await _archivio!.salvaVoce(nuova);
+      _archivio!.aggiungiVoce(nuova);
     }
   }
 
-  Future<void> segna(Voce v, bool presa) => _archivio!.aggiornaVoce(v, {
-    'presa': presa,
-    'presaDa': presa && nome.isNotEmpty ? nome : null,
-  });
+  Future<void> segna(Voce v, bool presa) async =>
+      _archivio!.aggiornaVoce(v.id, {
+        'presa': presa,
+        'presaDa': presa && nome.isNotEmpty ? nome : null,
+        'presaIl': presa ? DateTime.now().millisecondsSinceEpoch : null,
+      });
 
-  Future<void> cambiaQuantita(Voce v, int q) =>
-      q <= 0 ? elimina(v) : _archivio!.aggiornaVoce(v, {'quantita': q});
+  Future<void> cambiaQuantita(Voce v, int q) async =>
+      q <= 0 ? elimina(v) : _archivio!.aggiornaVoce(v.id, {'quantita': q});
 
-  Future<void> cambiaNota(Voce v, String nota) =>
-      _archivio!.aggiornaVoce(v, {'nota': nota.trim()});
+  Future<void> cambiaNota(Voce v, String nota) async =>
+      _archivio!.aggiornaVoce(v.id, {'nota': nota.trim()});
 
-  Future<void> elimina(Voce v) => _archivio!.eliminaVoci([v.id]);
+  Future<void> elimina(Voce v) async => _archivio!.eliminaVoce(v.id);
 
-  Future<void> ripristina(Voce v) => _archivio!.salvaVoce(v);
+  Future<void> ripristina(Voce v) async => _archivio!.aggiungiVoce(v);
 
-  Future<void> togliPresi() => _archivio!.eliminaVoci(presi.map((v) => v.id));
+  Future<void> togliPresi() async {
+    for (final v in presi) {
+      _archivio!.eliminaVoce(v.id);
+    }
+  }
 
   // ----------------------------------------------------------------- persona
 
@@ -284,7 +279,9 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
     if (inFamiglia && uid != null) {
       unawaited(
         _docFamiglia(codiceFamiglia!)
-            .update({'nomi.$uid': nome})
+            .update({
+              FieldPath(['nomi', uid!]): nome,
+            })
             .catchError((_) {}),
       );
     }
@@ -310,22 +307,28 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
     if (!condivisioneDisponibile || uid == null) {
       return 'Condivisione non disponibile';
     }
-    try {
-      var codice = _nuovoCodice();
-      while ((await _docFamiglia(codice).get()).exists) {
-        codice = _nuovoCodice();
+    // Se per caso il codice esiste già le regole rifiutano la scrittura
+    // (sarebbe la famiglia di altri): si riprova con un altro codice.
+    Object? errore;
+    for (var tentativo = 0; tentativo < 5; tentativo++) {
+      final codice = _nuovoCodice();
+      try {
+        await _docFamiglia(codice).set({
+          'codice': codice,
+          'versione': 2,
+          'membri': [uid],
+          'nomi': {uid!: nome},
+          'voci': <String, dynamic>{},
+          'prodotti': <String, dynamic>{},
+          'creata': FieldValue.serverTimestamp(),
+        });
+        await _entra(codice);
+        return null;
+      } catch (e) {
+        errore = e;
       }
-      await _docFamiglia(codice).set({
-        'codice': codice,
-        'membri': [uid],
-        'nomi': {uid!: nome},
-        'creata': FieldValue.serverTimestamp(),
-      });
-      await _entra(codice, portaListaLocale: true);
-      return null;
-    } catch (e) {
-      return 'Non è stato possibile creare la famiglia ($e)';
     }
+    return 'Non è stato possibile creare la famiglia ($errore)';
   }
 
   Future<String?> entraInFamiglia(String codiceScritto) async {
@@ -335,44 +338,51 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
     }
     if (codice.length != 6) return 'Il codice ha 6 caratteri';
     try {
-      final doc = await _docFamiglia(codice).get();
-      if (!doc.exists) return 'Codice non trovato: controlla e riprova';
+      // Si entra aggiungendo sé stessi: la lista si può leggere solo dopo.
       await _docFamiglia(codice).update({
         'membri': FieldValue.arrayUnion([uid]),
-        'nomi.$uid': nome,
+        FieldPath(['nomi', uid!]): nome,
       });
-      await _entra(codice, portaListaLocale: true);
+      await _entra(codice);
       return null;
+    } on FirebaseException catch (e) {
+      if (e.code == 'not-found' || e.code == 'permission-denied') {
+        return 'Codice non trovato: controlla e riprova';
+      }
+      return 'Non è stato possibile entrare (${e.message})';
     } catch (e) {
       return 'Non è stato possibile entrare ($e)';
     }
   }
 
-  Future<void> _entra(String codice, {required bool portaListaLocale}) async {
+  /// Entra nella famiglia portando la lista che c'era solo sul telefono.
+  Future<void> _entra(String codice) async {
     codiceFamiglia = codice;
     await _prefs.setString('famiglia', codice);
     final fam = ArchivioFamiglia(codice);
-    if (portaListaLocale) {
-      for (final v in _locale.tutteLeVoci) {
-        await fam.salvaVoce(v);
-      }
-      await _locale.eliminaVoci(_locale.tutteLeVoci.map((v) => v.id));
+    for (final v in _locale.tutteLeVoci) {
+      fam.aggiungiVoce(v);
     }
+    for (final p in _locale.tuttiIProdotti) {
+      fam.salvaProdotto(p);
+    }
+    _locale.svuota();
     _collega(fam);
+    await fam.invia();
     notifyListeners();
   }
 
-  Future<void> esciDallaFamiglia() async {
+  Future<void> esciDallaFamiglia({bool avvisaServer = true}) async {
     final c = codiceFamiglia;
     codiceFamiglia = null;
     await _prefs.remove('famiglia');
     _collega(_locale);
-    if (c != null && uid != null) {
+    if (avvisaServer && c != null && uid != null) {
       unawaited(
         _docFamiglia(c)
             .update({
               'membri': FieldValue.arrayRemove([uid]),
-              'nomi.$uid': FieldValue.delete(),
+              FieldPath(['nomi', uid!]): FieldValue.delete(),
             })
             .catchError((_) {}),
       );
