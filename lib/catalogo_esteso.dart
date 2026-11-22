@@ -183,6 +183,7 @@ besciamella | Besciamella | 🥛 | Parmalat, Granarolo
 margarina | Margarina | 🧈 | Gradina, Vallé
 formaggini | Formaggini | 🧀 | Mio, Galbani
 tofu | Tofu | 🥡 | Valsoia
+pasta-sfoglia | Pasta sfoglia e brisée | 🥧 | Buitoni, Stuffer
 '''),
   ..._leggi(Reparto.pastaRiso, '''
 spaghetti | Spaghetti | 🍝 | Barilla, De Cecco, Garofalo, Rummo, Voiello, La Molisana, Divella

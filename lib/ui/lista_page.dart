@@ -3,11 +3,13 @@ import 'package:material_ui/material_ui.dart';
 import '../archivio.dart' show StatoSync;
 import '../condividi.dart';
 import '../models.dart';
+import '../nutrizione.dart';
 import '../stato.dart';
 import 'catalogo_page.dart';
 import 'comuni.dart';
 import 'famiglia_page.dart';
 import 'installa_banner.dart';
+import 'quantita.dart';
 
 class ListaPage extends StatelessWidget {
   const ListaPage({super.key});
@@ -126,6 +128,27 @@ class ListaPage extends StatelessWidget {
               ),
               for (final v in presi) _RigaVoce(voce: v),
             ],
+            if (stato.kcalDaPrendere > 0)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.local_fire_department,
+                      size: 18,
+                      color: cs.tertiary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Calorie dei prodotti da prendere: '
+                        '≈ ${formatoKcal(stato.kcalDaPrendere)}',
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -198,7 +221,16 @@ class _RigaVoce extends StatelessWidget {
     final stato = StatoScope.read(context);
     final cs = Theme.of(context).colorScheme;
     final v = voce;
+    final n = nutrizioneDi(v.prodottoId);
+    final kcal = kcalDi(v);
+    final pezziStimati = v.grammi != null && n?.pezzo != null
+        ? (v.grammi! / n!.pezzo!).round()
+        : 0;
     final dettagli = [
+      if (v.grammi != null)
+        formatoPeso(v.grammi!, liquido: n?.liquido ?? false) +
+            (pezziStimati > 0 ? ' (≈ $pezziStimati pz)' : ''),
+      if (kcal != null && kcal > 0) '≈ ${formatoKcal(kcal)}',
       if (v.nota != null && v.nota!.isNotEmpty) v.nota!,
       if (v.presa && v.presaDa != null)
         'preso da ${v.presaDa}'
@@ -269,7 +301,7 @@ class _RigaVoce extends StatelessWidget {
             ),
           ),
           subtitle: dettagli.isEmpty ? null : Text(dettagli),
-          trailing: v.quantita > 1
+          trailing: v.grammi == null && v.quantita > 1
               ? Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -313,7 +345,14 @@ class _ModificaVoce extends StatefulWidget {
 }
 
 class _ModificaVoceState extends State<_ModificaVoce> {
-  late int _q = widget.voce.quantita;
+  late Quantita _q = Quantita(
+    aPeso: widget.voce.grammi != null,
+    pezzi: widget.voce.quantita,
+    grammi:
+        widget.voce.grammi ??
+        (nutrizioneDi(widget.voce.prodottoId)?.unita ?? 500) *
+            widget.voce.quantita,
+  );
   late final _nota = TextEditingController(text: widget.voce.nota ?? '');
 
   @override
@@ -335,15 +374,10 @@ class _ModificaVoceState extends State<_ModificaVoce> {
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              const Text('Quantità', style: TextStyle(fontSize: 16)),
-              const Spacer(),
-              QuantitaSelettore(
-                valore: _q,
-                onChanged: (x) => setState(() => _q = x),
-              ),
-            ],
+          SceltaQuantita(
+            nutrizione: nutrizioneDi(v.prodottoId),
+            valore: _q,
+            onChanged: (x) => setState(() => _q = x),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -370,12 +404,14 @@ class _ModificaVoceState extends State<_ModificaVoce> {
               const Spacer(),
               FilledButton(
                 onPressed: () {
-                  widget.stato.cambiaQuantita(v, _q);
+                  widget.stato.cambiaQuantitaEPeso(
+                    v,
+                    _q.aPeso,
+                    _q.pezzi,
+                    _q.grammi,
+                  );
                   if ((_nota.text.trim()) != (v.nota ?? '')) {
-                    widget.stato.cambiaNota(
-                      v.copyWith(quantita: _q),
-                      _nota.text,
-                    );
+                    widget.stato.cambiaNota(v, _nota.text);
                   }
                   Navigator.pop(context);
                 },

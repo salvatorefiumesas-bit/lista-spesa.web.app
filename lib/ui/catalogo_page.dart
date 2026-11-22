@@ -4,7 +4,10 @@ import '../catalogo.dart';
 import '../models.dart';
 import '../stato.dart';
 import 'comuni.dart';
-import 'lista_page.dart' show QuantitaSelettore;
+import '../nutrizione.dart';
+import '../ricette.dart';
+import 'quantita.dart';
+import 'ricette_page.dart';
 
 /// Scelta dei prodotti: reparti → prodotti → marca.
 class CatalogoPage extends StatefulWidget {
@@ -69,53 +72,63 @@ class _GrigliaReparti extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 200,
-        childAspectRatio: 1.25,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-      ),
-      itemCount: Reparto.values.length,
-      itemBuilder: (context, i) {
-        final r = Reparto.values[i];
-        final n = stato.prodottiDi(r).length;
-        return Material(
-          color: r.colore.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(18),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => RepartoPage(reparto: r)),
+    return CustomScrollView(
+      slivers: [
+        const SliverPadding(
+          padding: EdgeInsets.fromLTRB(12, 12, 12, 0),
+          sliver: SliverToBoxAdapter(child: BannerRicette()),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.all(12),
+          sliver: SliverGrid.builder(
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 200,
+              childAspectRatio: 1.25,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(r.emoji, style: const TextStyle(fontSize: 34)),
-                  const Spacer(),
-                  Text(
-                    r.nome,
-                    maxLines: 2,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: r.colore,
-                      height: 1.15,
+            itemCount: Reparto.values.length,
+            itemBuilder: (context, i) {
+              final r = Reparto.values[i];
+              final n = stato.prodottiDi(r).length;
+              return Material(
+                color: r.colore.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(18),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => RepartoPage(reparto: r)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(r.emoji, style: const TextStyle(fontSize: 34)),
+                        const Spacer(),
+                        Text(
+                          r.nome,
+                          maxLines: 2,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: r.colore,
+                            height: 1.15,
+                          ),
+                        ),
+                        Text(
+                          '$n prodotti',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    '$n prodotti',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -135,8 +148,23 @@ class _Risultati extends StatelessWidget {
     final risultati = stato.cerca(q);
     final t = normalizza(q);
     final esatto = risultati.any((p) => normalizza(p.nome) == t);
+    final piatti = ricette
+        .where((r) => normalizza(r.nome).contains(t))
+        .take(5)
+        .toList();
     return ListView(
       children: [
+        if (piatti.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Text(
+              'Piatti',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          for (final r in piatti) RigaRicetta(ricetta: r),
+          const Divider(),
+        ],
         for (final p in risultati)
           RigaProdotto(
             prodotto: p,
@@ -186,7 +214,14 @@ class RepartoPage extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 96),
-        children: [for (final p in prodotti) RigaProdotto(prodotto: p)],
+        children: [
+          if (reparto == Reparto.gastronomia)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
+              child: BannerRicette(),
+            ),
+          for (final p in prodotti) RigaProdotto(prodotto: p),
+        ],
       ),
     );
   }
@@ -287,12 +322,22 @@ class _SceltaMarca extends StatefulWidget {
 }
 
 class _SceltaMarcaState extends State<_SceltaMarca> {
-  int _q = 1;
+  Quantita? _q;
 
   Future<void> _aggiungi(Prodotto p, String? marca) async {
     final stato = StatoScope.read(context);
     final messenger = ScaffoldMessenger.of(context);
-    await stato.aggiungi(p, marca: marca, quantita: _q);
+    final q = _q ?? const Quantita();
+    final liquido = nutrizioneDi(p.id)?.liquido ?? false;
+    await stato.aggiungi(
+      p,
+      marca: marca,
+      quantita: q.pezzi,
+      grammi: q.aPeso ? q.grammi : null,
+    );
+    final quanto = q.aPeso
+        ? '${formatoPeso(q.grammi, liquido: liquido)} di '
+        : (q.pezzi > 1 ? '${q.pezzi} × ' : '');
     if (!mounted) return;
     Navigator.pop(context, true);
     messenger
@@ -302,7 +347,7 @@ class _SceltaMarcaState extends State<_SceltaMarca> {
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 2),
           content: Text(
-            'Aggiunto: ${_q > 1 ? '$_q × ' : ''}${p.nome}${marca != null ? ' $marca' : ''}',
+            'Aggiunto: $quanto${p.nome}${marca != null ? ' $marca' : ''}',
           ),
         ),
       );
@@ -353,60 +398,71 @@ class _SceltaMarcaState extends State<_SceltaMarca> {
     }
     final cs = Theme.of(context).colorScheme;
 
+    final n = nutrizioneDi(p.id);
+    final q = _q ?? Quantita(aPeso: false, grammi: n == null ? 500 : n.unita);
+
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: marche.length > 4 ? .75 : .55,
+      initialChildSize: .85,
       maxChildSize: .95,
-      builder: (context, scroll) => Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 12, 8),
-            child: Row(
-              children: [
-                ProdottoAvatar(emoji: p.emoji, reparto: p.reparto, size: 52),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        p.nome,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      Text(
-                        p.reparto.nome,
-                        style: TextStyle(color: p.reparto.colore),
-                      ),
-                    ],
+      builder: (context, scroll) => CustomScrollView(
+        controller: scroll,
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 12, 8),
+              child: Row(
+                children: [
+                  ProdottoAvatar(emoji: p.emoji, reparto: p.reparto, size: 52),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.nome,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        Text(
+                          p.reparto.nome,
+                          style: TextStyle(color: p.reparto.colore),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                QuantitaSelettore(
-                  valore: _q,
-                  onChanged: (x) => setState(() => _q = x),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Scegli la marca',
-                style: Theme.of(context).textTheme.labelLarge,
+                ],
               ),
             ),
           ),
-          Expanded(
-            child: GridView(
-              controller: scroll,
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 130,
-                childAspectRatio: .95,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: SceltaQuantita(
+                nutrizione: n,
+                valore: q,
+                onChanged: (x) => setState(() => _q = x),
               ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Scegli la marca per aggiungere',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+            sliver: SliverGrid.extent(
+              maxCrossAxisExtent: 130,
+              childAspectRatio: .95,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
               children: [
                 _TesseraMarca(
                   icona: ProdottoAvatar(
@@ -563,4 +619,54 @@ Future<bool> nuovoProdotto(
   final p = await stato.creaProdotto(ctrl.text, scelto);
   if (!context.mounted) return false;
   return sceltaMarca(context, stato, p);
+}
+
+/// Riquadro che porta alle idee per pranzo e cena.
+class BannerRicette extends StatelessWidget {
+  const BannerRicette({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.tertiaryContainer,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const RicettePage()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Text('🍽️', style: TextStyle(fontSize: 40)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Idee per pranzo e cena',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: cs.onTertiaryContainer,
+                      ),
+                    ),
+                    Text(
+                      '${ricette.length} piatti con calorie: scegli e '
+                      'gli ingredienti vanno in lista',
+                      style: TextStyle(color: cs.onTertiaryContainer),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: cs.onTertiaryContainer),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

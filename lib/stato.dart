@@ -11,6 +11,8 @@ import 'archivio.dart';
 import 'catalogo.dart';
 import 'firebase_config.dart';
 import 'models.dart';
+import 'nutrizione.dart';
+import 'ricette.dart';
 
 /// Stato dell'app: lista, catalogo, famiglia.
 class Stato extends ChangeNotifier with WidgetsBindingObserver {
@@ -225,7 +227,13 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
       .where((v) => !v.presa && (v.prodottoId == p.id || v.nome == p.nome))
       .fold(0, (s, v) => s + v.quantita);
 
-  Future<void> aggiungi(Prodotto p, {String? marca, int quantita = 1}) async {
+  Future<void> aggiungi(
+    Prodotto p, {
+    String? marca,
+    int quantita = 1,
+    int? grammi,
+    String? nota,
+  }) async {
     final nuova = Voce(
       id: nuovoId(),
       prodottoId: p.id,
@@ -233,20 +241,66 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
       marca: marca,
       reparto: p.reparto,
       emoji: p.emoji,
-      quantita: quantita,
+      quantita: grammi == null ? quantita : 1,
+      grammi: grammi,
+      nota: nota,
       aggiuntaDa: nome.isEmpty ? null : nome,
       creata: DateTime.now().millisecondsSinceEpoch,
     );
-    // Se c'è già lo stesso prodotto della stessa marca, aumenta la quantità.
+    // Se c'è già lo stesso prodotto della stessa marca, somma la quantità.
     final uguale = voci
         .where((v) => !v.presa && v.chiave == nuova.chiave)
         .firstOrNull;
-    if (uguale != null) {
-      _archivio!.aggiornaVoce(uguale.id, const {}, incremento: quantita);
-    } else {
+    if (uguale == null) {
       _archivio!.aggiungiVoce(nuova);
+    } else if (grammi != null) {
+      _archivio!.aggiornaVoce(uguale.id, {
+        'grammi': (uguale.grammi ?? 0) + grammi,
+        if (nota != null) 'nota': _unisciNote(uguale.nota, nota),
+      });
+    } else {
+      _archivio!.aggiornaVoce(uguale.id, const {}, incremento: quantita);
     }
   }
+
+  static String _unisciNote(String? a, String b) {
+    if (a == null || a.isEmpty) return b;
+    if (a.contains(b.replaceFirst('per ', ''))) return a;
+    return '$a, ${b.replaceFirst('per ', '')}';
+  }
+
+  /// Mette in lista gli ingredienti scelti di una ricetta, con le dosi per
+  /// il numero di persone. Restituisce quanti prodotti ha aggiunto.
+  int aggiungiRicetta(Ricetta r, int persone, Set<String> scelti) {
+    var n = 0;
+    for (final i in r.ingredienti) {
+      if (!scelti.contains(i.prodottoId)) continue;
+      final p = catalogo.where((x) => x.id == i.prodottoId).firstOrNull;
+      if (p == null) continue;
+      aggiungi(p, grammi: i.grammi * persone, nota: 'per ${r.nome}');
+      n++;
+    }
+    return n;
+  }
+
+  /// Imposta pezzi oppure peso di una voce.
+  Future<void> cambiaQuantitaEPeso(
+    Voce v,
+    bool aPeso,
+    int pezzi,
+    int grammi,
+  ) async => _archivio!.aggiornaVoce(v.id, {
+    'grammi': aPeso ? grammi : null,
+    'quantita': aPeso ? 1 : pezzi,
+  });
+
+  /// Cambia la quantità a peso di una voce (0 = toglie dalla lista).
+  Future<void> cambiaGrammi(Voce v, int g) async =>
+      g <= 0 ? elimina(v) : _archivio!.aggiornaVoce(v.id, {'grammi': g});
+
+  /// Calorie totali dei prodotti ancora da prendere (solo quelli noti).
+  int get kcalDaPrendere =>
+      voci.where((v) => !v.presa).fold(0, (s, v) => s + (kcalDi(v) ?? 0));
 
   Future<void> segna(Voce v, bool presa) async =>
       _archivio!.aggiornaVoce(v.id, {

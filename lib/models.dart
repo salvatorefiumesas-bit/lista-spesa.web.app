@@ -90,6 +90,7 @@ class Voce {
     this.prodottoId,
     this.marca,
     this.quantita = 1,
+    this.grammi,
     this.nota,
     this.presa = false,
     this.aggiuntaDa,
@@ -105,6 +106,9 @@ class Voce {
   final Reparto reparto;
   final String emoji;
   final int quantita;
+
+  /// Quantità a peso (grammi o ml): se c'è, vale al posto dei pezzi.
+  final int? grammi;
   final String? nota;
   final bool presa;
   final String? aggiuntaDa;
@@ -115,7 +119,8 @@ class Voce {
   final int creata;
 
   /// Chiave per riconoscere lo stesso prodotto della stessa marca.
-  String get chiave => '${nome.toLowerCase()}|${(marca ?? '').toLowerCase()}';
+  String get chiave =>
+      '${nome.toLowerCase()}|${(marca ?? '').toLowerCase()}|${grammi == null ? 'pz' : 'g'}';
 
   Voce copyWith({
     int? quantita,
@@ -131,6 +136,7 @@ class Voce {
     reparto: reparto,
     emoji: emoji,
     quantita: quantita ?? this.quantita,
+    grammi: grammi,
     nota: nota ?? this.nota,
     presa: presa ?? this.presa,
     aggiuntaDa: aggiuntaDa,
@@ -147,6 +153,7 @@ class Voce {
     'reparto': reparto.name,
     'emoji': emoji,
     'quantita': quantita,
+    'grammi': grammi,
     'nota': nota,
     'presa': presa,
     'aggiuntaDa': aggiuntaDa,
@@ -163,6 +170,7 @@ class Voce {
     reparto: Reparto.daNome(m['reparto'] as String?),
     emoji: m['emoji'] as String? ?? '🛒',
     quantita: (m['quantita'] as num?)?.toInt() ?? 1,
+    grammi: (m['grammi'] as num?)?.toInt(),
     nota: m['nota'] as String?,
     presa: m['presa'] as bool? ?? false,
     aggiuntaDa: m['aggiuntaDa'] as String?,

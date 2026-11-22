@@ -6,6 +6,8 @@ Lista della spesa condivisa per la famiglia, fatta in Flutter.
 - **Si ordina da sola**: la lista è raggruppata per reparto (frutta e verdura, carne, latticini, pulizia casa…) nell'ordine del supermercato.
 - **Condivisa in tempo reale**: uno aggiunge, l'altro vede subito e spunta ciò che mette nel carrello.
 - **Funziona anche senza rete** al supermercato: si sincronizza quando torna il segnale.
+- **Idee per pranzo e cena**: 153 piatti; scegli le persone e gli ingredienti vanno in lista con le dosi giuste.
+- **Calorie e peso**: ogni prodotto si può prendere a pezzi o a peso (g/kg, ml/l) con le calorie calcolate.
 - **Ricerca** per prodotto o per marca (scrivi "Dash" e trovi il detersivo), più prodotti e marche personali.
 
 ## Dove si usa
