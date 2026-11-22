@@ -26,7 +26,8 @@ class _InstallaBannerState extends State<InstallaBanner> {
   @override
   Widget build(BuildContext context) {
     final stato = StatoScope.of(context);
-    if (_modo == ModoInstallazione.nessuno || stato.flag('banner-installa-chiuso')) {
+    if (_modo == ModoInstallazione.nessuno ||
+        stato.flag('banner-installa-chiuso')) {
       return const SizedBox.shrink();
     }
     final cs = Theme.of(context).colorScheme;
@@ -39,20 +40,31 @@ class _InstallaBannerState extends State<InstallaBanner> {
         padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
         child: Row(
           children: [
-            Icon(ios ? Icons.ios_share : Icons.install_mobile, color: cs.onPrimaryContainer),
+            Icon(
+              ios ? Icons.ios_share : Icons.install_mobile,
+              color: cs.onPrimaryContainer,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Installa l\'app sul telefono',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: cs.onPrimaryContainer)),
+                  Text(
+                    'Installa l\'app sul telefono',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: cs.onPrimaryContainer,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     ios
                         ? 'Aggiungila alla schermata Home: si apre come un\'app vera.'
                         : 'Un tocco e la trovi tra le tue app.',
-                    style: TextStyle(color: cs.onPrimaryContainer, fontSize: 13),
+                    style: TextStyle(
+                      color: cs.onPrimaryContainer,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
@@ -94,20 +106,25 @@ void mostraIstruzioniIphone(BuildContext context) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Installa su iPhone', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Installa su iPhone',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 16),
             if (altroBrowser) ...[
               const _Passo(
                 n: '!',
                 icona: Icons.open_in_browser,
-                testo: 'Stai usando un\'altra app (es. WhatsApp). Apri questa pagina in Safari: '
+                testo:
+                    'Stai usando un\'altra app (es. WhatsApp). Apri questa pagina in Safari: '
                     'tocca ⋯ oppure l\'icona della bussola e scegli "Apri in Safari".',
               ),
             ],
             const _Passo(
               n: '1',
               icona: Icons.ios_share,
-              testo: 'In Safari tocca il pulsante Condividi (il quadrato con la freccia verso l\'alto), '
+              testo:
+                  'In Safari tocca il pulsante Condividi (il quadrato con la freccia verso l\'alto), '
                   'in basso al centro o in alto a destra.',
             ),
             const _Passo(
@@ -152,7 +169,13 @@ class _Passo extends StatelessWidget {
           CircleAvatar(
             radius: 16,
             backgroundColor: cs.primary,
-            child: Text(n, style: TextStyle(color: cs.onPrimary, fontWeight: FontWeight.bold)),
+            child: Text(
+              n,
+              style: TextStyle(
+                color: cs.onPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Icon(icona, color: cs.primary),

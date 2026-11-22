@@ -17,9 +17,12 @@ class ListaSpesaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     ThemeData tema(Brightness b) => ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2E7D32), brightness: b),
-          useMaterial3: true,
-        );
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF2E7D32),
+        brightness: b,
+      ),
+      useMaterial3: true,
+    );
     return StatoScope(
       stato: stato,
       child: MaterialApp(
@@ -101,7 +104,10 @@ class _BenvenutoState extends State<_Benvenuto> {
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton(onPressed: _avanti, child: const Text('Inizia')),
+                    child: FilledButton(
+                      onPressed: _avanti,
+                      child: const Text('Inizia'),
+                    ),
                   ),
                 ],
               ),

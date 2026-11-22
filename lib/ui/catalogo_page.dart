@@ -87,7 +87,9 @@ class _GrigliaReparti extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(18),
             onTap: () => Navigator.push(
-                context, MaterialPageRoute(builder: (_) => RepartoPage(reparto: r))),
+              context,
+              MaterialPageRoute(builder: (_) => RepartoPage(reparto: r)),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -95,11 +97,19 @@ class _GrigliaReparti extends StatelessWidget {
                 children: [
                   Text(r.emoji, style: const TextStyle(fontSize: 34)),
                   const Spacer(),
-                  Text(r.nome,
-                      maxLines: 2,
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700, color: r.colore, height: 1.15)),
-                  Text('$n prodotti', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    r.nome,
+                    maxLines: 2,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: r.colore,
+                      height: 1.15,
+                    ),
+                  ),
+                  Text(
+                    '$n prodotti',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
@@ -111,7 +121,11 @@ class _GrigliaReparti extends StatelessWidget {
 }
 
 class _Risultati extends StatelessWidget {
-  const _Risultati({required this.stato, required this.q, required this.onAggiunto});
+  const _Risultati({
+    required this.stato,
+    required this.q,
+    required this.onAggiunto,
+  });
   final Stato stato;
   final String q;
   final VoidCallback onAggiunto;
@@ -129,14 +143,20 @@ class _Risultati extends StatelessWidget {
             onAggiunto: onAggiunto,
             // Se ho cercato una marca (es. "Dash"), la propongo già.
             marcaSuggerita: p.marche
-                .where((m) => normalizza(m).contains(t) && !normalizza(p.nome).contains(t))
+                .where(
+                  (m) =>
+                      normalizza(m).contains(t) &&
+                      !normalizza(p.nome).contains(t),
+                )
                 .firstOrNull,
           ),
         if (!esatto)
           ListTile(
             leading: const CircleAvatar(child: Icon(Icons.add)),
             title: Text('Aggiungi «${q.trim()}»'),
-            subtitle: const Text('Nuovo prodotto: lo ricorderò per le prossime volte'),
+            subtitle: const Text(
+              'Nuovo prodotto: lo ricorderò per le prossime volte',
+            ),
             onTap: () async {
               if (await nuovoProdotto(context, stato, q.trim())) onAggiunto();
             },
@@ -173,7 +193,12 @@ class RepartoPage extends StatelessWidget {
 }
 
 class RigaProdotto extends StatelessWidget {
-  const RigaProdotto({super.key, required this.prodotto, this.marcaSuggerita, this.onAggiunto});
+  const RigaProdotto({
+    super.key,
+    required this.prodotto,
+    this.marcaSuggerita,
+    this.onAggiunto,
+  });
   final Prodotto prodotto;
   final String? marcaSuggerita;
   final VoidCallback? onAggiunto;
@@ -209,7 +234,12 @@ class RigaProdotto extends StatelessWidget {
         ],
       ),
       onTap: () async {
-        if (await sceltaMarca(context, stato, p, marcaIniziale: marcaSuggerita)) {
+        if (await sceltaMarca(
+          context,
+          stato,
+          p,
+          marcaIniziale: marcaSuggerita,
+        )) {
           onAggiunto?.call();
         }
       },
@@ -219,8 +249,12 @@ class RigaProdotto extends StatelessWidget {
 
 /// Foglio con le marche del prodotto (con immagine) e la quantità.
 /// Restituisce true se il prodotto è stato aggiunto alla lista.
-Future<bool> sceltaMarca(BuildContext context, Stato stato, Prodotto p,
-    {String? marcaIniziale}) async {
+Future<bool> sceltaMarca(
+  BuildContext context,
+  Stato stato,
+  Prodotto p, {
+  String? marcaIniziale,
+}) async {
   final aggiunto = await showModalBottomSheet<bool>(
     context: context,
     showDragHandle: true,
@@ -228,14 +262,22 @@ Future<bool> sceltaMarca(BuildContext context, Stato stato, Prodotto p,
     useSafeArea: true,
     builder: (_) => StatoScope(
       stato: stato,
-      child: _SceltaMarca(prodottoId: p.id, prodottoIniziale: p, marcaIniziale: marcaIniziale),
+      child: _SceltaMarca(
+        prodottoId: p.id,
+        prodottoIniziale: p,
+        marcaIniziale: marcaIniziale,
+      ),
     ),
   );
   return aggiunto ?? false;
 }
 
 class _SceltaMarca extends StatefulWidget {
-  const _SceltaMarca({required this.prodottoId, required this.prodottoIniziale, this.marcaIniziale});
+  const _SceltaMarca({
+    required this.prodottoId,
+    required this.prodottoIniziale,
+    this.marcaIniziale,
+  });
   final String prodottoId;
   final Prodotto prodottoIniziale;
   final String? marcaIniziale;
@@ -255,11 +297,15 @@ class _SceltaMarcaState extends State<_SceltaMarca> {
     Navigator.pop(context, true);
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-        content: Text('Aggiunto: ${_q > 1 ? '$_q × ' : ''}${p.nome}${marca != null ? ' $marca' : ''}'),
-      ));
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          content: Text(
+            'Aggiunto: ${_q > 1 ? '$_q × ' : ''}${p.nome}${marca != null ? ' $marca' : ''}',
+          ),
+        ),
+      );
   }
 
   Future<void> _nuovaMarca(Prodotto p) async {
@@ -277,8 +323,14 @@ class _SceltaMarcaState extends State<_SceltaMarca> {
           onSubmitted: (t) => Navigator.pop(c, t),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Annulla')),
-          FilledButton(onPressed: () => Navigator.pop(c, ctrl.text), child: const Text('Aggiungi')),
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, ctrl.text),
+            child: const Text('Aggiungi'),
+          ),
         ],
       ),
     );
@@ -290,7 +342,8 @@ class _SceltaMarcaState extends State<_SceltaMarca> {
   @override
   Widget build(BuildContext context) {
     final stato = StatoScope.of(context);
-    final p = stato.catalogo.where((x) => x.id == widget.prodottoId).firstOrNull ??
+    final p =
+        stato.catalogo.where((x) => x.id == widget.prodottoId).firstOrNull ??
         widget.prodottoIniziale;
     final marche = [...p.marche];
     if (widget.marcaIniziale != null) {
@@ -316,12 +369,21 @@ class _SceltaMarcaState extends State<_SceltaMarca> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(p.nome, style: Theme.of(context).textTheme.titleLarge),
-                      Text(p.reparto.nome, style: TextStyle(color: p.reparto.colore)),
+                      Text(
+                        p.nome,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      Text(
+                        p.reparto.nome,
+                        style: TextStyle(color: p.reparto.colore),
+                      ),
                     ],
                   ),
                 ),
-                QuantitaSelettore(valore: _q, onChanged: (x) => setState(() => _q = x)),
+                QuantitaSelettore(
+                  valore: _q,
+                  onChanged: (x) => setState(() => _q = x),
+                ),
               ],
             ),
           ),
@@ -329,7 +391,10 @@ class _SceltaMarcaState extends State<_SceltaMarca> {
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('Scegli la marca', style: Theme.of(context).textTheme.labelLarge),
+              child: Text(
+                'Scegli la marca',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
             ),
           ),
           Expanded(
@@ -344,7 +409,11 @@ class _SceltaMarcaState extends State<_SceltaMarca> {
               ),
               children: [
                 _TesseraMarca(
-                  icona: ProdottoAvatar(emoji: p.emoji, reparto: p.reparto, size: 52),
+                  icona: ProdottoAvatar(
+                    emoji: p.emoji,
+                    reparto: p.reparto,
+                    size: 52,
+                  ),
                   testo: 'Qualsiasi',
                   onTap: () => _aggiungi(p, null),
                 ),
@@ -393,7 +462,9 @@ class _TesseraMarca extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Material(
-      color: evidenziata ? cs.primaryContainer : cs.surfaceContainerHighest.withValues(alpha: .5),
+      color: evidenziata
+          ? cs.primaryContainer
+          : cs.surfaceContainerHighest.withValues(alpha: .5),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -405,11 +476,16 @@ class _TesseraMarca extends StatelessWidget {
             children: [
               icona,
               const SizedBox(height: 8),
-              Text(testo,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600, height: 1.1)),
+              Text(
+                testo,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  height: 1.1,
+                ),
+              ),
             ],
           ),
         ),
@@ -419,8 +495,12 @@ class _TesseraMarca extends StatelessWidget {
 }
 
 /// Crea un prodotto che non c'è nel catalogo, con il reparto indovinato.
-Future<bool> nuovoProdotto(BuildContext context, Stato stato, String nomeIniziale,
-    {Reparto? reparto}) async {
+Future<bool> nuovoProdotto(
+  BuildContext context,
+  Stato stato,
+  String nomeIniziale, {
+  Reparto? reparto,
+}) async {
   final ctrl = TextEditingController(text: nomeIniziale);
   var scelto = reparto ?? indovinaReparto(nomeIniziale, stato.catalogo);
   var toccatoReparto = reparto != null;
@@ -437,7 +517,9 @@ Future<bool> nuovoProdotto(BuildContext context, Stato stato, String nomeInizial
               controller: ctrl,
               autofocus: nomeIniziale.isEmpty,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'Nome (es. Lenticchie)'),
+              decoration: const InputDecoration(
+                labelText: 'Nome (es. Lenticchie)',
+              ),
               onChanged: (t) {
                 if (!toccatoReparto) {
                   setState(() => scelto = indovinaReparto(t, stato.catalogo));
@@ -452,7 +534,10 @@ Future<bool> nuovoProdotto(BuildContext context, Stato stato, String nomeInizial
               decoration: const InputDecoration(labelText: 'Reparto'),
               items: [
                 for (final r in Reparto.values)
-                  DropdownMenuItem(value: r, child: Text('${r.emoji}  ${r.nome}')),
+                  DropdownMenuItem(
+                    value: r,
+                    child: Text('${r.emoji}  ${r.nome}'),
+                  ),
               ],
               onChanged: (r) => setState(() {
                 scelto = r ?? scelto;
@@ -462,7 +547,10 @@ Future<bool> nuovoProdotto(BuildContext context, Stato stato, String nomeInizial
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Annulla')),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Annulla'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(c, ctrl.text.trim().isNotEmpty),
             child: const Text('Avanti'),

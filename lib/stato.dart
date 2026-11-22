@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'archivio.dart';
@@ -13,7 +13,7 @@ import 'firebase_config.dart';
 import 'models.dart';
 
 /// Stato dell'app: lista, catalogo, famiglia.
-class Stato extends ChangeNotifier {
+class Stato extends ChangeNotifier with WidgetsBindingObserver {
   late SharedPreferences _prefs;
   late ArchivioLocale _locale;
   Archivio? _archivio;
@@ -33,9 +33,32 @@ class Stato extends ChangeNotifier {
   List<Voce> voci = [];
   List<Prodotto> _personali = [];
 
-  bool get inFamiglia => codiceFamiglia != null && _archivio is ArchivioFamiglia;
+  bool get inFamiglia =>
+      codiceFamiglia != null && _archivio is ArchivioFamiglia;
+
+  StatoSync statoSync = StatoSync.ok;
+
+  /// Riapre il collegamento con il server: invia subito le modifiche in
+  /// attesa e scarica quelle dell'altro telefono. Si usa quando l'app torna
+  /// in primo piano (il telefono spesso chiude la connessione in background)
+  /// e quando si tira giù la lista.
+  Future<void> riconnetti() async {
+    if (!inFamiglia) return;
+    try {
+      final fs = FirebaseFirestore.instance;
+      await fs.disableNetwork();
+      await fs.enableNetwork();
+    } catch (_) {}
+  }
+
+  /// Quando l'app torna in primo piano riallaccia subito la connessione.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) riconnetti();
+  }
 
   Future<void> avvia() async {
+    WidgetsBinding.instance.addObserver(this);
     _prefs = await SharedPreferences.getInstance();
     _locale = ArchivioLocale(_prefs);
     nome = _prefs.getString('nome') ?? '';
@@ -44,11 +67,16 @@ class Stato extends ChangeNotifier {
     if (firebaseConfigurato) {
       try {
         await Firebase.initializeApp(options: opzioniFirebase);
-        FirebaseFirestore.instance.settings =
-            const Settings(persistenceEnabled: true);
+        FirebaseFirestore.instance.settings = const Settings(
+          persistenceEnabled: true,
+          // Sul web (iPhone) il collegamento "streaming" viene spesso
+          // rallentato o interrotto dalle reti mobili e da Safari: il
+          // long polling è più affidabile e le spunte arrivano subito.
+          webExperimentalForceLongPolling: true,
+        );
         final auth = FirebaseAuth.instance;
-        uid = auth.currentUser?.uid ??
-            (await auth.signInAnonymously()).user?.uid;
+        uid =
+            auth.currentUser?.uid ?? (await auth.signInAnonymously()).user?.uid;
         condivisioneDisponibile = uid != null;
       } catch (e) {
         erroreFirebase = '$e';
@@ -56,9 +84,11 @@ class Stato extends ChangeNotifier {
       }
     }
 
-    _collega(condivisioneDisponibile && codiceFamiglia != null
-        ? ArchivioFamiglia(codiceFamiglia!)
-        : _locale);
+    _collega(
+      condivisioneDisponibile && codiceFamiglia != null
+          ? ArchivioFamiglia(codiceFamiglia!)
+          : _locale,
+    );
     pronto = true;
     notifyListeners();
   }
@@ -78,6 +108,10 @@ class Stato extends ChangeNotifier {
       notifyListeners();
     });
     if (a is ArchivioFamiglia) {
+      a.sync.addListener(() {
+        statoSync = a.sync.value;
+        notifyListeners();
+      });
       _subFam = _docFamiglia(a.codice).snapshots().listen((s) {
         final d = s.data();
         if (d == null) return;
@@ -97,9 +131,11 @@ class Stato extends ChangeNotifier {
     final out = <Prodotto>[];
     for (final b in catalogoBase) {
       final extra = pers.remove(b.id);
-      out.add(extra == null
-          ? b
-          : b.copyWith(marche: {...b.marche, ...extra.marche}.toList()));
+      out.add(
+        extra == null
+            ? b
+            : b.copyWith(marche: {...b.marche, ...extra.marche}.toList()),
+      );
     }
     out.addAll(pers.values);
     return out;
@@ -140,14 +176,16 @@ class Stato extends ChangeNotifier {
       return;
     }
     final esistente = _personali.where((x) => x.id == p.id).firstOrNull;
-    await _archivio!.salvaProdotto(Prodotto(
-      id: p.id,
-      nome: p.nome,
-      reparto: p.reparto,
-      emoji: p.emoji,
-      marche: [...?esistente?.marche, m],
-      personale: true,
-    ));
+    await _archivio!.salvaProdotto(
+      Prodotto(
+        id: p.id,
+        nome: p.nome,
+        reparto: p.reparto,
+        emoji: p.emoji,
+        marche: [...?esistente?.marche, m],
+        personale: true,
+      ),
+    );
   }
 
   Future<Prodotto> creaProdotto(String nome, Reparto reparto) async {
@@ -184,10 +222,11 @@ class Stato extends ChangeNotifier {
   }
 
   List<Voce> get presi => voci.where((v) => v.presa).toList()
-    ..sort((a, b) =>
-        a.reparto.index != b.reparto.index
-            ? a.reparto.index - b.reparto.index
-            : a.nome.compareTo(b.nome));
+    ..sort(
+      (a, b) => a.reparto.index != b.reparto.index
+          ? a.reparto.index - b.reparto.index
+          : a.nome.compareTo(b.nome),
+    );
 
   int quantiInLista(Prodotto p) => voci
       .where((v) => !v.presa && (v.prodottoId == p.id || v.nome == p.nome))
@@ -206,33 +245,36 @@ class Stato extends ChangeNotifier {
       creata: DateTime.now().millisecondsSinceEpoch,
     );
     // Se c'è già lo stesso prodotto della stessa marca, aumenta la quantità.
-    final uguale =
-        voci.where((v) => !v.presa && v.chiave == nuova.chiave).firstOrNull;
+    final uguale = voci
+        .where((v) => !v.presa && v.chiave == nuova.chiave)
+        .firstOrNull;
     if (uguale != null) {
-      await _archivio!
-          .salvaVoce(uguale.copyWith(quantita: uguale.quantita + quantita));
+      await _archivio!.aggiornaVoce(uguale, {
+        'quantita': inFamiglia
+            ? FieldValue.increment(quantita)
+            : uguale.quantita + quantita,
+      });
     } else {
       await _archivio!.salvaVoce(nuova);
     }
   }
 
-  Future<void> segna(Voce v, bool presa) => _archivio!.salvaVoce(presa
-      ? v.copyWith(presa: true, presaDa: nome.isEmpty ? null : nome)
-      : v.copyWith(presa: false, azzeraPresaDa: true));
+  Future<void> segna(Voce v, bool presa) => _archivio!.aggiornaVoce(v, {
+    'presa': presa,
+    'presaDa': presa && nome.isNotEmpty ? nome : null,
+  });
 
-  Future<void> cambiaQuantita(Voce v, int q) => q <= 0
-      ? elimina(v)
-      : _archivio!.salvaVoce(v.copyWith(quantita: q));
+  Future<void> cambiaQuantita(Voce v, int q) =>
+      q <= 0 ? elimina(v) : _archivio!.aggiornaVoce(v, {'quantita': q});
 
   Future<void> cambiaNota(Voce v, String nota) =>
-      _archivio!.salvaVoce(v.copyWith(nota: nota.trim()));
+      _archivio!.aggiornaVoce(v, {'nota': nota.trim()});
 
   Future<void> elimina(Voce v) => _archivio!.eliminaVoci([v.id]);
 
   Future<void> ripristina(Voce v) => _archivio!.salvaVoce(v);
 
-  Future<void> togliPresi() =>
-      _archivio!.eliminaVoci(presi.map((v) => v.id));
+  Future<void> togliPresi() => _archivio!.eliminaVoci(presi.map((v) => v.id));
 
   // ----------------------------------------------------------------- persona
 
@@ -240,8 +282,11 @@ class Stato extends ChangeNotifier {
     nome = n.trim();
     await _prefs.setString('nome', nome);
     if (inFamiglia && uid != null) {
-      unawaited(_docFamiglia(codiceFamiglia!)
-          .update({'nomi.$uid': nome}).catchError((_) {}));
+      unawaited(
+        _docFamiglia(codiceFamiglia!)
+            .update({'nomi.$uid': nome})
+            .catchError((_) {}),
+      );
     }
     notifyListeners();
   }
@@ -323,10 +368,14 @@ class Stato extends ChangeNotifier {
     await _prefs.remove('famiglia');
     _collega(_locale);
     if (c != null && uid != null) {
-      unawaited(_docFamiglia(c).update({
-        'membri': FieldValue.arrayRemove([uid]),
-        'nomi.$uid': FieldValue.delete(),
-      }).catchError((_) {}));
+      unawaited(
+        _docFamiglia(c)
+            .update({
+              'membri': FieldValue.arrayRemove([uid]),
+              'nomi.$uid': FieldValue.delete(),
+            })
+            .catchError((_) {}),
+      );
     }
     notifyListeners();
   }

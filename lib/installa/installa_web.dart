@@ -12,10 +12,10 @@ external JSString _stato();
 external JSPromise<JSBoolean> _mostra();
 
 ModoInstallazione modoInstallazione() => switch (_stato().toDart) {
-      'ios' || 'ios-altro' => ModoInstallazione.ios,
-      'pulsante' => ModoInstallazione.pulsante,
-      _ => ModoInstallazione.nessuno,
-    };
+  'ios' || 'ios-altro' => ModoInstallazione.ios,
+  'pulsante' => ModoInstallazione.pulsante,
+  _ => ModoInstallazione.nessuno,
+};
 
 /// iPhone ma in un browser diverso da Safari (es. dentro WhatsApp).
 bool iosNonSafari() => _stato().toDart == 'ios-altro';

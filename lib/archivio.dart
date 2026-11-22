@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models.dart';
@@ -11,6 +12,11 @@ abstract class Archivio {
   Stream<List<Voce>> voci();
   Stream<List<Prodotto>> prodotti();
   Future<void> salvaVoce(Voce v);
+
+  /// Cambia solo alcuni campi: se due persone toccano la stessa voce nello
+  /// stesso momento (es. una spunta e l'altra cambia quantità) non si
+  /// cancellano a vicenda le modifiche.
+  Future<void> aggiornaVoce(Voce v, Map<String, dynamic> campi);
   Future<void> eliminaVoci(Iterable<String> ids);
   Future<void> salvaProdotto(Prodotto p);
   void chiudi() {}
@@ -57,7 +63,9 @@ class ArchivioLocale extends Archivio {
   Future<void> _scriviVoci() async {
     _vociCtrl.add(_voci.values.toList());
     await _prefs.setString(
-        'voci', jsonEncode([for (final v in _voci.values) v.toMap()]));
+      'voci',
+      jsonEncode([for (final v in _voci.values) v.toMap()]),
+    );
   }
 
   @override
@@ -65,6 +73,10 @@ class ArchivioLocale extends Archivio {
     _voci[v.id] = v;
     return _scriviVoci();
   }
+
+  @override
+  Future<void> aggiornaVoce(Voce v, Map<String, dynamic> campi) =>
+      salvaVoce(Voce.fromMap({...v.toMap(), ...campi}));
 
   @override
   Future<void> eliminaVoci(Iterable<String> ids) {
@@ -79,7 +91,9 @@ class ArchivioLocale extends Archivio {
     _prodotti[p.id] = p;
     _prodCtrl.add(_prodotti.values.toList());
     await _prefs.setString(
-        'prodotti', jsonEncode([for (final p in _prodotti.values) p.toMap()]));
+      'prodotti',
+      jsonEncode([for (final p in _prodotti.values) p.toMap()]),
+    );
   }
 
   @override
@@ -97,11 +111,17 @@ class ArchivioFamiglia extends Archivio {
   DocumentReference<Map<String, dynamic>> get _fam =>
       FirebaseFirestore.instance.collection('famiglie').doc(codice);
 
+  /// Stato della sincronizzazione, per mostrarlo nella lista.
+  final sync = ValueNotifier<StatoSync>(StatoSync.collegamento);
+
   @override
-  Stream<List<Voce>> voci() => _fam
-      .collection('voci')
-      .snapshots()
-      .map((s) => [for (final d in s.docs) Voce.fromMap(d.data())]);
+  Stream<List<Voce>> voci() =>
+      _fam.collection('voci').snapshots(includeMetadataChanges: true).map((s) {
+        sync.value = s.metadata.hasPendingWrites
+            ? StatoSync.invio
+            : (s.metadata.isFromCache ? StatoSync.offline : StatoSync.ok);
+        return [for (final d in s.docs) Voce.fromMap(d.data())];
+      });
 
   @override
   Stream<List<Prodotto>> prodotti() => _fam
@@ -117,6 +137,15 @@ class ArchivioFamiglia extends Archivio {
   }
 
   @override
+  Future<void> aggiornaVoce(Voce v, Map<String, dynamic> campi) async {
+    unawaited(
+      _fam.collection('voci').doc(v.id).update(campi).catchError((_) {
+        // La voce non esiste più (es. tolta dall'altro telefono): niente da fare.
+      }),
+    );
+  }
+
+  @override
   Future<void> eliminaVoci(Iterable<String> ids) async {
     final batch = FirebaseFirestore.instance.batch();
     for (final id in ids) {
@@ -126,7 +155,24 @@ class ArchivioFamiglia extends Archivio {
   }
 
   @override
+  void chiudi() => sync.dispose();
+
+  @override
   Future<void> salvaProdotto(Prodotto p) async {
     unawaited(_fam.collection('prodotti').doc(p.id).set(p.toMap()));
   }
+}
+
+enum StatoSync {
+  /// Primo collegamento in corso.
+  collegamento,
+
+  /// Tutto inviato e aggiornato.
+  ok,
+
+  /// Ci sono modifiche fatte qui che non sono ancora arrivate al server.
+  invio,
+
+  /// Senza rete: si vede l'ultima copia salvata sul telefono.
+  offline,
 }

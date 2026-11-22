@@ -8,8 +8,31 @@ void main() {
     expect(ids.toSet().length, ids.length);
   });
 
+  test('nessun prodotto ha lo stesso nome di un altro', () {
+    final nomi = catalogoBase.map((p) => normalizza(p.nome)).toList();
+    final doppi = nomi
+        .where((n) => nomi.where((x) => x == n).length > 1)
+        .toSet();
+    expect(doppi, isEmpty);
+  });
+
+  test('il catalogo ha tutti i tipi di tacchino', () {
+    final tacchino = catalogoBase.where(
+      (p) => normalizza(p.nome).contains('tacchino'),
+    );
+    expect(tacchino.length, greaterThanOrEqualTo(10));
+    expect(
+      indovinaReparto('salsiccia di tacchino', catalogoBase),
+      Reparto.carne,
+    );
+    expect(indovinaReparto('petto di tacchino', catalogoBase), Reparto.carne);
+  });
+
   test('indovina il reparto dei prodotti scritti a mano', () {
-    expect(indovinaReparto('deodorante', catalogoBase), Reparto.igienePersonale);
+    expect(
+      indovinaReparto('deodorante', catalogoBase),
+      Reparto.igienePersonale,
+    );
     expect(indovinaReparto('Dash', catalogoBase), Reparto.puliziaCasa);
     expect(indovinaReparto('fettine di manzo', catalogoBase), Reparto.carne);
     expect(indovinaReparto('Caffe', catalogoBase), Reparto.colazioneDolci);
@@ -17,16 +40,29 @@ void main() {
   });
 
   test('voci uguali hanno la stessa chiave anche con maiuscole diverse', () {
-    Voce v(String nome, String? marca) =>
-        Voce(id: nome, nome: nome, marca: marca, reparto: Reparto.altro, emoji: '', creata: 0);
+    Voce v(String nome, String? marca) => Voce(
+      id: nome,
+      nome: nome,
+      marca: marca,
+      reparto: Reparto.altro,
+      emoji: '',
+      creata: 0,
+    );
     expect(v('Latte', 'Granarolo').chiave, v('latte', 'granarolo').chiave);
     expect(v('Latte', 'Granarolo').chiave, isNot(v('Latte', null).chiave));
   });
 
   test('una voce sopravvive al salvataggio', () {
     final v = Voce(
-      id: 'x', nome: 'Pasta', marca: 'Barilla', reparto: Reparto.pastaRiso,
-      emoji: '🍝', quantita: 3, presa: true, presaDa: 'Salvatore', creata: 5,
+      id: 'x',
+      nome: 'Pasta',
+      marca: 'Barilla',
+      reparto: Reparto.pastaRiso,
+      emoji: '🍝',
+      quantita: 3,
+      presa: true,
+      presaDa: 'Salvatore',
+      creata: 5,
     );
     final w = Voce.fromMap(v.toMap());
     expect(w.reparto, Reparto.pastaRiso);

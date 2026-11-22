@@ -8,6 +8,7 @@ enum Reparto {
   carne('Carne', '🥩', Color(0xFFC62828)),
   pesce('Pesce', '🐟', Color(0xFF0277BD)),
   salumiFormaggi('Salumi e formaggi', '🧀', Color(0xFFEF8F00)),
+  gastronomia('Gastronomia e piatti pronti', '🍱', Color(0xFFAD1457)),
   latticiniUova('Latte, latticini e uova', '🥛', Color(0xFF5C6BC0)),
   pastaRiso('Pasta, riso e farina', '🍝', Color(0xFFD4A017)),
   conserveCondimenti('Conserve e condimenti', '🥫', Color(0xFFD84315)),
@@ -26,8 +27,10 @@ enum Reparto {
   final String emoji;
   final Color colore;
 
-  static Reparto daNome(String? n) =>
-      Reparto.values.firstWhere((r) => r.name == n, orElse: () => Reparto.altro);
+  static Reparto daNome(String? n) => Reparto.values.firstWhere(
+    (r) => r.name == n,
+    orElse: () => Reparto.altro,
+  );
 }
 
 /// Un prodotto del catalogo (es. "Deodorante") con le marche disponibili.
@@ -51,30 +54,30 @@ class Prodotto {
   final bool personale;
 
   Prodotto copyWith({List<String>? marche}) => Prodotto(
-        id: id,
-        nome: nome,
-        reparto: reparto,
-        emoji: emoji,
-        marche: marche ?? this.marche,
-        personale: personale,
-      );
+    id: id,
+    nome: nome,
+    reparto: reparto,
+    emoji: emoji,
+    marche: marche ?? this.marche,
+    personale: personale,
+  );
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'nome': nome,
-        'reparto': reparto.name,
-        'emoji': emoji,
-        'marche': marche,
-      };
+    'id': id,
+    'nome': nome,
+    'reparto': reparto.name,
+    'emoji': emoji,
+    'marche': marche,
+  };
 
   factory Prodotto.fromMap(Map<String, dynamic> m) => Prodotto(
-        id: m['id'] as String,
-        nome: m['nome'] as String? ?? '',
-        reparto: Reparto.daNome(m['reparto'] as String?),
-        emoji: m['emoji'] as String? ?? '🛒',
-        marche: List<String>.from(m['marche'] as List? ?? const []),
-        personale: true,
-      );
+    id: m['id'] as String,
+    nome: m['nome'] as String? ?? '',
+    reparto: Reparto.daNome(m['reparto'] as String?),
+    emoji: m['emoji'] as String? ?? '🛒',
+    marche: List<String>.from(m['marche'] as List? ?? const []),
+    personale: true,
+  );
 }
 
 /// Una riga della lista della spesa.
@@ -116,51 +119,50 @@ class Voce {
     String? presaDa,
     bool azzeraPresaDa = false,
     String? nota,
-  }) =>
-      Voce(
-        id: id,
-        prodottoId: prodottoId,
-        nome: nome,
-        marca: marca,
-        reparto: reparto,
-        emoji: emoji,
-        quantita: quantita ?? this.quantita,
-        nota: nota ?? this.nota,
-        presa: presa ?? this.presa,
-        aggiuntaDa: aggiuntaDa,
-        presaDa: azzeraPresaDa ? null : (presaDa ?? this.presaDa),
-        creata: creata,
-      );
+  }) => Voce(
+    id: id,
+    prodottoId: prodottoId,
+    nome: nome,
+    marca: marca,
+    reparto: reparto,
+    emoji: emoji,
+    quantita: quantita ?? this.quantita,
+    nota: nota ?? this.nota,
+    presa: presa ?? this.presa,
+    aggiuntaDa: aggiuntaDa,
+    presaDa: azzeraPresaDa ? null : (presaDa ?? this.presaDa),
+    creata: creata,
+  );
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'prodottoId': prodottoId,
-        'nome': nome,
-        'marca': marca,
-        'reparto': reparto.name,
-        'emoji': emoji,
-        'quantita': quantita,
-        'nota': nota,
-        'presa': presa,
-        'aggiuntaDa': aggiuntaDa,
-        'presaDa': presaDa,
-        'creata': creata,
-      };
+    'id': id,
+    'prodottoId': prodottoId,
+    'nome': nome,
+    'marca': marca,
+    'reparto': reparto.name,
+    'emoji': emoji,
+    'quantita': quantita,
+    'nota': nota,
+    'presa': presa,
+    'aggiuntaDa': aggiuntaDa,
+    'presaDa': presaDa,
+    'creata': creata,
+  };
 
   factory Voce.fromMap(Map<String, dynamic> m) => Voce(
-        id: m['id'] as String,
-        prodottoId: m['prodottoId'] as String?,
-        nome: m['nome'] as String? ?? '',
-        marca: m['marca'] as String?,
-        reparto: Reparto.daNome(m['reparto'] as String?),
-        emoji: m['emoji'] as String? ?? '🛒',
-        quantita: (m['quantita'] as num?)?.toInt() ?? 1,
-        nota: m['nota'] as String?,
-        presa: m['presa'] as bool? ?? false,
-        aggiuntaDa: m['aggiuntaDa'] as String?,
-        presaDa: m['presaDa'] as String?,
-        creata: (m['creata'] as num?)?.toInt() ?? 0,
-      );
+    id: m['id'] as String,
+    prodottoId: m['prodottoId'] as String?,
+    nome: m['nome'] as String? ?? '',
+    marca: m['marca'] as String?,
+    reparto: Reparto.daNome(m['reparto'] as String?),
+    emoji: m['emoji'] as String? ?? '🛒',
+    quantita: (m['quantita'] as num?)?.toInt() ?? 1,
+    nota: m['nota'] as String?,
+    presa: m['presa'] as bool? ?? false,
+    aggiuntaDa: m['aggiuntaDa'] as String?,
+    presaDa: m['presaDa'] as String?,
+    creata: (m['creata'] as num?)?.toInt() ?? 0,
+  );
 }
 
 String nuovoId() {

@@ -26,13 +26,15 @@ const androidAppId = '';
 bool get firebaseConfigurato =>
     apiKey.isNotEmpty &&
     projectId.isNotEmpty &&
-    (kIsWeb ? webAppId.isNotEmpty : (androidAppId.isNotEmpty || webAppId.isNotEmpty));
+    (kIsWeb
+        ? webAppId.isNotEmpty
+        : (androidAppId.isNotEmpty || webAppId.isNotEmpty));
 
 FirebaseOptions get opzioniFirebase => FirebaseOptions(
-      apiKey: apiKey,
-      appId: kIsWeb || androidAppId.isEmpty ? webAppId : androidAppId,
-      messagingSenderId: messagingSenderId,
-      projectId: projectId,
-      authDomain: authDomain.isEmpty ? null : authDomain,
-      storageBucket: storageBucket.isEmpty ? null : storageBucket,
-    );
+  apiKey: apiKey,
+  appId: kIsWeb || androidAppId.isEmpty ? webAppId : androidAppId,
+  messagingSenderId: messagingSenderId,
+  projectId: projectId,
+  authDomain: authDomain.isEmpty ? null : authDomain,
+  storageBucket: storageBucket.isEmpty ? null : storageBucket,
+);

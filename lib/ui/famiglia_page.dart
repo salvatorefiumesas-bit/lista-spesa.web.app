@@ -39,7 +39,8 @@ class _FamigliaPageState extends State<FamigliaPage> {
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               labelText: 'Il tuo nome',
-              helperText: 'Così l\'altro vede chi ha aggiunto o comprato un prodotto',
+              helperText:
+                  'Così l\'altro vede chi ha aggiunto o comprato un prodotto',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.person_outline),
             ),
@@ -55,18 +56,23 @@ class _FamigliaPageState extends State<FamigliaPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(children: [
-                      Icon(Icons.cloud_off, color: cs.onSurfaceVariant),
-                      const SizedBox(width: 8),
-                      Text('Condivisione non ancora attiva', style: tt.titleMedium),
-                    ]),
+                    Row(
+                      children: [
+                        Icon(Icons.cloud_off, color: cs.onSurfaceVariant),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Condivisione non ancora attiva',
+                          style: tt.titleMedium,
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       stato.erroreFirebase == null
                           ? 'Per ora la lista resta solo su questo telefono. '
-                              'La condivisione si attiva appena viene collegato Firebase.'
+                                'La condivisione si attiva appena viene collegato Firebase.'
                           : 'Impossibile collegarsi al servizio di condivisione. '
-                              'Controlla la connessione e riapri l\'app.',
+                                'Controlla la connessione e riapri l\'app.',
                     ),
                   ],
                 ),
@@ -95,7 +101,8 @@ class _FamigliaPageState extends State<FamigliaPage> {
             FilledButton.icon(
               icon: const Icon(Icons.share),
               label: const Text('Invia l\'invito (WhatsApp, SMS…)'),
-              onPressed: () => condividiApp(context, codiceFamiglia: stato.codiceFamiglia),
+              onPressed: () =>
+                  condividiApp(context, codiceFamiglia: stato.codiceFamiglia),
             ),
             const SizedBox(height: 24),
             Text('Nella lista', style: tt.labelLarge),
@@ -118,13 +125,17 @@ class _FamigliaPageState extends State<FamigliaPage> {
                   builder: (c) => AlertDialog(
                     title: const Text('Uscire dalla famiglia?'),
                     content: const Text(
-                        'Non vedrai più la lista condivisa. Potrai rientrare con il codice.'),
+                      'Non vedrai più la lista condivisa. Potrai rientrare con il codice.',
+                    ),
                     actions: [
                       TextButton(
-                          onPressed: () => Navigator.pop(c, false),
-                          child: const Text('Annulla')),
+                        onPressed: () => Navigator.pop(c, false),
+                        child: const Text('Annulla'),
+                      ),
                       FilledButton(
-                          onPressed: () => Navigator.pop(c, true), child: const Text('Esci')),
+                        onPressed: () => Navigator.pop(c, true),
+                        child: const Text('Esci'),
+                      ),
                     ],
                   ),
                 );
@@ -160,7 +171,9 @@ class _FamigliaPageState extends State<FamigliaPage> {
             FilledButton.tonalIcon(
               icon: const Icon(Icons.login),
               label: const Text('Entra con un codice'),
-              onPressed: _occupato ? null : () => _esegui(() => stato.entraInFamiglia(_codice.text)),
+              onPressed: _occupato
+                  ? null
+                  : () => _esegui(() => stato.entraInFamiglia(_codice.text)),
             ),
           ],
           const SizedBox(height: 32),
@@ -169,9 +182,12 @@ class _FamigliaPageState extends State<FamigliaPage> {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.phone_iphone),
             title: const Text('Condividi l\'app per iPhone'),
-            subtitle: const Text('Manda il link e le istruzioni per installarla da Safari'),
+            subtitle: const Text(
+              'Manda il link e le istruzioni per installarla da Safari',
+            ),
             trailing: const Icon(Icons.share),
-            onTap: () => condividiApp(context, codiceFamiglia: stato.codiceFamiglia),
+            onTap: () =>
+                condividiApp(context, codiceFamiglia: stato.codiceFamiglia),
           ),
           if (_occupato) ...[
             const SizedBox(height: 16),
