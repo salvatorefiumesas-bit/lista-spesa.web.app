@@ -344,6 +344,7 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
         FieldPath(['nomi', uid!]): nome,
       });
       await _entra(codice);
+      await _togliVecchiAccessi(codice);
       return null;
     } on FirebaseException catch (e) {
       if (e.code == 'not-found' || e.code == 'permission-denied') {
@@ -370,6 +371,41 @@ class Stato extends ChangeNotifier with WidgetsBindingObserver {
     _collega(fam);
     await fam.invia();
     notifyListeners();
+  }
+
+  /// Chi disinstalla e reinstalla l'app riceve un nuovo accesso anonimo:
+  /// rientrando con il codice, il vecchio accesso con lo stesso nome resta
+  /// nella famiglia e la persona compare due volte. Qui lo si toglie.
+  Future<void> _togliVecchiAccessi(String codice) async {
+    if (nome.isEmpty || uid == null) return;
+    try {
+      final doc = await _docFamiglia(codice).get();
+      final nomi = Map<String, dynamic>.from(doc.data()?['nomi'] as Map? ?? {});
+      final vecchi = [
+        for (final e in nomi.entries)
+          if (e.key != uid && normalizza('${e.value}') == normalizza(nome))
+            e.key,
+      ];
+      if (vecchi.isNotEmpty) await _rimuovi(codice, vecchi);
+    } catch (_) {}
+  }
+
+  Future<void> _rimuovi(String codice, List<String> ids) =>
+      _docFamiglia(codice).update({
+        'membri': FieldValue.arrayRemove(ids),
+        for (final id in ids) FieldPath(['nomi', id]): FieldValue.delete(),
+      });
+
+  /// Toglie una persona dalla famiglia (es. un vecchio telefono).
+  Future<String?> rimuoviMembro(String id) async {
+    final c = codiceFamiglia;
+    if (c == null || id == uid) return null;
+    try {
+      await _rimuovi(c, [id]);
+      return null;
+    } catch (e) {
+      return 'Non è stato possibile rimuoverlo ($e)';
+    }
   }
 
   Future<void> esciDallaFamiglia({bool avvisaServer = true}) async {

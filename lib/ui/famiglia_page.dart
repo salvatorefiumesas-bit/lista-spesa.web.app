@@ -23,6 +23,33 @@ class _FamigliaPageState extends State<FamigliaPage> {
     if (errore != null) avviso(context, errore);
   }
 
+  Future<void> _rimuovi(String id, String chi) async {
+    final stato = StatoScope.read(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text('Rimuovere ${chi.isEmpty ? 'questo telefono' : chi}?'),
+        content: const Text(
+          'Non vedrà più la lista. Usalo per i telefoni vecchi o le app '
+          'disinstallate: se serve, potrà rientrare con il codice.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Rimuovi'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final errore = await stato.rimuoviMembro(id);
+    if (errore != null && mounted) avviso(context, errore);
+  }
+
   @override
   Widget build(BuildContext context) {
     final stato = StatoScope.of(context);
@@ -114,6 +141,13 @@ class _FamigliaPageState extends State<FamigliaPage> {
                 ),
                 title: Text(e.value.isEmpty ? 'Senza nome' : e.value),
                 subtitle: e.key == stato.uid ? const Text('Tu') : null,
+                trailing: e.key == stato.uid
+                    ? null
+                    : IconButton(
+                        tooltip: 'Rimuovi dalla famiglia',
+                        icon: const Icon(Icons.person_remove_outlined),
+                        onPressed: () => _rimuovi(e.key, e.value),
+                      ),
               ),
             const SizedBox(height: 24),
             OutlinedButton.icon(
