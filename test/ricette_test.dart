@@ -2,12 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lista_spesa/catalogo.dart';
 import 'package:lista_spesa/models.dart';
 import 'package:lista_spesa/nutrizione.dart';
+import 'package:lista_spesa/preparazioni.dart';
 import 'package:lista_spesa/ricette.dart';
 
 const _cibo = {
-  Reparto.fruttaVerdura, Reparto.panetteria, Reparto.carne, Reparto.pesce,
-  Reparto.salumiFormaggi, Reparto.gastronomia, Reparto.latticiniUova,
-  Reparto.pastaRiso, Reparto.surgelati, Reparto.snackAperitivo,
+  Reparto.fruttaVerdura,
+  Reparto.panetteria,
+  Reparto.carne,
+  Reparto.pesce,
+  Reparto.salumiFormaggi,
+  Reparto.gastronomia,
+  Reparto.latticiniUova,
+  Reparto.pastaRiso,
+  Reparto.surgelati,
+  Reparto.snackAperitivo,
 };
 
 void main() {
@@ -20,6 +28,16 @@ void main() {
           if (!ids.contains(i.prodottoId)) '${r.id}: ${i.prodottoId}',
     };
     expect(mancanti, isEmpty);
+  });
+
+  test('ogni piatto ha il procedimento (e nessun procedimento è orfano)', () {
+    final senza = [
+      for (final r in ricette)
+        if ((preparazioni[r.id] ?? []).length < 2) r.id,
+    ];
+    expect(senza, isEmpty);
+    final ids = {for (final r in ricette) r.id};
+    expect(preparazioni.keys.where((k) => !ids.contains(k)), isEmpty);
   });
 
   test('le ricette hanno id unici', () {
@@ -40,7 +58,11 @@ void main() {
     for (final r in ricette) {
       for (final i in r.ingredienti) {
         if (i.prodottoId == 'caffe') continue;
-        expect(nutrizioneDi(i.prodottoId), isNotNull, reason: '${r.id} ${i.prodottoId}');
+        expect(
+          nutrizioneDi(i.prodottoId),
+          isNotNull,
+          reason: '${r.id} ${i.prodottoId}',
+        );
       }
     }
   });
@@ -48,7 +70,8 @@ void main() {
   test('calorie a porzione sensate (80–1.400 kcal)', () {
     final strane = [
       for (final r in ricette)
-        if (r.kcalPorzione < 80 || r.kcalPorzione > 1400) '${r.nome}: ${r.kcalPorzione}',
+        if (r.kcalPorzione < 80 || r.kcalPorzione > 1400)
+          '${r.nome}: ${r.kcalPorzione}',
     ];
     expect(strane, isEmpty);
   });
@@ -60,9 +83,25 @@ void main() {
     expect(formatoPeso(750), '750 g');
     expect(formatoPeso(1000, liquido: true), '1 l');
     expect(formatoKcal(12300), '12.300 kcal');
-    final v = Voce(id: 'x', prodottoId: 'pasta', nome: 'Pasta', reparto: Reparto.pastaRiso, emoji: '', creata: 0, grammi: 500);
+    final v = Voce(
+      id: 'x',
+      prodottoId: 'pasta',
+      nome: 'Pasta',
+      reparto: Reparto.pastaRiso,
+      emoji: '',
+      creata: 0,
+      grammi: 500,
+    );
     expect(kcalDi(v), 1775);
-    final u = Voce(id: 'y', prodottoId: 'uova', nome: 'Uova', reparto: Reparto.latticiniUova, emoji: '', creata: 0, quantita: 6);
+    final u = Voce(
+      id: 'y',
+      prodottoId: 'uova',
+      nome: 'Uova',
+      reparto: Reparto.latticiniUova,
+      emoji: '',
+      creata: 0,
+      quantita: 6,
+    );
     expect(grammiDi(u), 330);
   });
 

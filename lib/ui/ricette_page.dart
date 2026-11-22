@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../catalogo.dart';
 import '../nutrizione.dart';
+import '../preparazioni.dart';
 import '../ricette.dart';
 import '../stato.dart';
 import 'comuni.dart';
@@ -127,7 +128,11 @@ class RigaRicetta extends StatelessWidget {
         '${formatoKcal(r.kcalPorzione)} a porzione · ${r.minuti} min · '
         '${r.ingredienti.length} ingredienti',
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: IconButton(
+        tooltip: 'Apri ricetta',
+        icon: const Icon(Icons.menu_book_outlined),
+        onPressed: () => apriProcedimento(context, r),
+      ),
       onTap: () => apriRicetta(context, r),
     );
   }
@@ -200,7 +205,17 @@ class _SchedaRicettaState extends State<_SchedaRicetta> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.menu_book_outlined),
+                    label: const Text('Apri ricetta: come si cucina'),
+                    onPressed: () =>
+                        apriProcedimento(context, r, persone: _persone),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Card(
                   elevation: 0,
                   color: cs.tertiaryContainer,
@@ -351,4 +366,125 @@ class _SchedaRicettaState extends State<_SchedaRicetta> {
       ),
     );
   }
+}
+
+/// Pagina "Apri ricetta": ingredienti con le dosi e procedimento passo passo.
+class ProcedimentoPage extends StatelessWidget {
+  const ProcedimentoPage({super.key, required this.ricetta, this.persone = 2});
+  final Ricetta ricetta;
+  final int persone;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = ricetta;
+    final passi = preparazioni[r.id] ?? const <String>[];
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    return Scaffold(
+      appBar: AppBar(title: Text(r.nome)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        children: [
+          Row(
+            children: [
+              Text(r.emoji, style: const TextStyle(fontSize: 44)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Chip(
+                      avatar: const Icon(Icons.timer_outlined, size: 18),
+                      label: Text('${r.minuti} min'),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.people_outline, size: 18),
+                      label: Text('per $persone'),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.local_fire_department, size: 18),
+                      label: Text('${formatoKcal(r.kcalPorzione)} a porzione'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text('Ingredienti per $persone', style: tt.titleMedium),
+          const SizedBox(height: 8),
+          for (final i in r.ingredienti)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Text(i.prodotto.emoji),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(i.prodotto.nome)),
+                  Text(
+                    _dose(i, persone),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text('+ sale q.b.', style: TextStyle(fontSize: 13)),
+          ),
+          const SizedBox(height: 24),
+          Text('Preparazione', style: tt.titleMedium),
+          const SizedBox(height: 8),
+          for (final (n, passo) in passi.indexed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: cs.primary,
+                    child: Text(
+                      '${n + 1}',
+                      style: TextStyle(
+                        color: cs.onPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      passo,
+                      style: const TextStyle(fontSize: 16, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          Text('Dosi e calorie sono indicative.', style: tt.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
+void apriProcedimento(BuildContext context, Ricetta r, {int persone = 2}) =>
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProcedimentoPage(ricetta: r, persone: persone),
+      ),
+    );
+
+String _dose(Ingrediente i, int persone) {
+  final n = nutrizioneDi(i.prodottoId);
+  final g = i.grammi * persone;
+  final peso = formatoPeso(g, liquido: n?.liquido ?? false);
+  final pz = n?.pezzo;
+  if (pz == null || g < pz * .8) return peso;
+  return '$peso (≈ ${(g / pz).round()} pz)';
 }

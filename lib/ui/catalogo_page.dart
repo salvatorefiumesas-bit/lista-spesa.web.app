@@ -194,33 +194,72 @@ class _Risultati extends StatelessWidget {
   }
 }
 
-class RepartoPage extends StatelessWidget {
+class RepartoPage extends StatefulWidget {
   const RepartoPage({super.key, required this.reparto});
   final Reparto reparto;
 
   @override
+  State<RepartoPage> createState() => _RepartoPageState();
+}
+
+class _RepartoPageState extends State<RepartoPage> {
+  String _q = '';
+
+  @override
   Widget build(BuildContext context) {
+    final reparto = widget.reparto;
     final stato = StatoScope.of(context);
-    final prodotti = stato.prodottiDi(reparto);
+    final t = normalizza(_q);
+    // Cerca per nome del prodotto o per marca, solo in questo reparto.
+    final prodotti = stato
+        .prodottiDi(reparto)
+        .where(
+          (p) =>
+              t.isEmpty ||
+              normalizza(p.nome).contains(t) ||
+              p.marche.any((m) => normalizza(m).contains(t)),
+        )
+        .toList();
     return Scaffold(
       appBar: AppBar(
         title: Text('${reparto.emoji}  ${reparto.nome}'),
         backgroundColor: reparto.colore.withValues(alpha: .12),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(64),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: SearchBar(
+              hintText: 'Cerca in ${reparto.nome.toLowerCase()}',
+              leading: const Icon(Icons.search),
+              elevation: const WidgetStatePropertyAll(0),
+              onChanged: (x) => setState(() => _q = x),
+            ),
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => nuovoProdotto(context, stato, '', reparto: reparto),
+        onPressed: () =>
+            nuovoProdotto(context, stato, _q.trim(), reparto: reparto),
         icon: const Icon(Icons.add),
         label: const Text('Altro prodotto'),
       ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 96),
         children: [
-          if (reparto == Reparto.gastronomia)
+          if (reparto == Reparto.gastronomia && t.isEmpty)
             const Padding(
               padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
               child: BannerRicette(),
             ),
           for (final p in prodotti) RigaProdotto(prodotto: p),
+          if (prodotti.isEmpty)
+            ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.add)),
+              title: Text('Aggiungi «${_q.trim()}»'),
+              subtitle: Text('Nuovo prodotto in ${reparto.nome}'),
+              onTap: () =>
+                  nuovoProdotto(context, stato, _q.trim(), reparto: reparto),
+            ),
         ],
       ),
     );
