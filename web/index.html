@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Lista della spesa condivisa, ordinata per reparto">
+  <meta name="theme-color" content="#2E7D32">
+
+  <!-- iPhone: app a schermo intero quando aggiunta alla schermata Home -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Spesa">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <title>Lista Spesa</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body { margin: 0; background: #F4F8F3; }
+    #caricamento {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      font-family: -apple-system, system-ui, sans-serif; color: #2E7D32;
+    }
+    #caricamento img { width: 96px; height: 96px; border-radius: 22px; }
+  </style>
+
+  <script>
+    // Installazione come app: Android/Chrome offre un vero pulsante,
+    // iPhone richiede Condividi → "Aggiungi alla schermata Home".
+    window.__lsPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.__lsPrompt = e;
+      window.dispatchEvent(new Event('ls-installabile'));
+    });
+    window.addEventListener('appinstalled', function () { window.__lsPrompt = null; });
+
+    window.lsStatoInstallazione = function () {
+      var standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       window.navigator.standalone === true;
+      if (standalone) return 'installata';
+      var ua = navigator.userAgent;
+      var ios = /iPhone|iPad|iPod/.test(ua) ||
+                (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+      if (ios) {
+        // Dentro WhatsApp, Instagram, ecc. non si può installare: serve Safari.
+        var altro = /FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\/|EdgiOS/.test(ua);
+        return altro ? 'ios-altro' : 'ios';
+      }
+      return window.__lsPrompt ? 'pulsante' : 'nessuno';
+    };
+
+    window.lsMostraInstallazione = function () {
+      var p = window.__lsPrompt;
+      if (!p) return Promise.resolve(false);
+      p.prompt();
+      return p.userChoice.then(function (r) {
+        window.__lsPrompt = null;
+        return r.outcome === 'accepted';
+      });
+    };
+  </script>
+</head>
+<body>
+  <div id="caricamento">
+    <img src="icons/Icon-192.png" alt="">
+    <div>Caricamento…</div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var c = document.getElementById('caricamento');
+      if (c) c.remove();
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

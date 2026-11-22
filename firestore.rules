@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Regole di sicurezza di Firestore per la Lista Spesa.
+// Da copiare in console.firebase.google.com → Firestore Database → Regole.
+//
+// Ogni famiglia è un documento famiglie/{codice} con la lista dei membri.
+// Solo i membri leggono e modificano la lista e i prodotti della famiglia.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function membro(codice) {
+      return request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/famiglie/$(codice)).data.membri;
+    }
+
+    match /famiglie/{codice} {
+      // Chi conosce il codice può controllare che esista (per entrare).
+      allow get: if request.auth != null;
+      allow list: if false;
+
+      // Creare una famiglia: all'inizio l'unico membro è chi la crea.
+      allow create: if request.auth != null
+        && request.resource.data.membri == [request.auth.uid];
+
+      // I membri possono modificarla (nome, uscire); chi ha il codice può
+      // solo aggiungere sé stesso.
+      allow update: if request.auth != null && (
+        request.auth.uid in resource.data.membri ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membri', 'nomi']) &&
+          request.resource.data.membri.toSet() ==
+            resource.data.membri.toSet().union([request.auth.uid].toSet()) &&
+          request.resource.data.nomi.diff(resource.data.nomi).affectedKeys().hasOnly([request.auth.uid])
+        )
+      );
+      allow delete: if false;
+
+      match /voci/{id} {
+        allow read, write: if membro(codice);
+      }
+      match /prodotti/{id} {
+        allow read, write: if membro(codice);
+      }
+    }
+  }
+}
